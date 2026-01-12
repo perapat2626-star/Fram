@@ -9,59 +9,48 @@
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
         .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 350px; border: 1px solid #334155; }
-        .btn { width: 45%; padding: 15px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .on { background: #22c55e; } .off { background: #ef4444; }
-        .save { background: #3b82f6; width: 90%; margin-top: 10px; }
-        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 18px; }
-        #moist { font-size: 40px; color: #22c55e; font-weight: bold; }
+        .btn { width: 45%; padding: 15px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; font-size: 18px; }
+        .on { background: #22c55e; } 
+        .off { background: #ef4444; }
+        #moist { font-size: 50px; color: #22c55e; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>🚀 Smart Farm Real-time</h2>
+    <h2>🌿 Smart Farm Remote</h2>
+    
     <div class="card">
-        💧 ความชื้นดิน: <span id="moist">--</span> %
+        <p>💧 ความชื้นดินปัจจุบัน</p>
+        <div id="moist">--</div>
+        <p>%</p>
     </div>
 
     <div class="card">
-        <h3>⏰ ตั้งเวลาไฟอัตโนมัติ</h3>
-        เปิด: <input type="time" id="onTime"><br>
-        ปิด: <input type="time" id="offTime"><br>
-        <button onclick="saveTimer()" class="btn save">บันทึกเวลา</button>
+        <p>💡 ระบบไฟส่องสว่าง</p>
+        <button onclick="set('light','ON')" class="btn on">เปิด</button>
+        <button onclick="set('light','OFF')" class="btn off">ปิด</button>
     </div>
 
     <div class="card">
-        <h3>🎮 ควบคุมทันที</h3>
-        <p>ไฟ: <button onclick="set('light','ON')" class="btn on">เปิด</button><button onclick="set('light','OFF')" class="btn off">ปิด</button></p>
-        <p>ปั๊ม: <button onclick="set('pump','ON')" class="btn on">เปิด</button><button onclick="set('pump','OFF')" class="btn off">ปิด</button></p>
+        <p>💧 ระบบปั๊มน้ำ</p>
+        <button onclick="set('pump','ON')" class="btn on">เปิด</button>
+        <button onclick="set('pump','OFF')" class="btn off">ปิด</button>
     </div>
 
     <script>
-        const firebaseConfig = { databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com" };
+        const firebaseConfig = {
+            databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ดึงค่าเวลาปัจจุบันที่ตั้งไว้มาโชว์ในช่อง input
-        db.ref("timer").on("value", (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                document.getElementById("onTime").value = data.on;
-                document.getElementById("offTime").value = data.off;
-            }
-        });
-
+        // แสดงค่าความชื้นแบบ Real-time
         db.ref("status/moisture").on("value", (snapshot) => {
-            document.getElementById("moist").innerText = snapshot.val();
+            document.getElementById("moist").innerText = snapshot.val() || "0";
         });
 
-        function set(target, action) { db.ref("control/" + target).set(action); }
-
-        function saveTimer() {
-            const on = document.getElementById("onTime").value;
-            const off = document.getElementById("offTime").value;
-            if(on && off) {
-                db.ref("timer").set({ on: on, off: off });
-                alert("บันทึกเวลาเปิด-ปิดแล้ว");
-            }
+        // ส่งคำสั่งควบคุม
+        function set(target, action) {
+            db.ref("control/" + target).set(action);
         }
     </script>
 </body>
