@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Farm Control</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 350px; border: 1px solid #333; }
+        .btn { width: 80%; padding: 15px; margin: 10px; border-radius: 10px; border: none; font-size: 18px; cursor: pointer; color: white; }
+        .on { background: #27ae60; } .off { background: #c0392b; }
+        #moist { font-size: 48px; color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <h2>🚀 Smart Farm Real-time</h2>
+    <div class="card">
+        <p>ความชื้นดิน</p>
+        <div id="moist">0</div>
+    </div>
+    <div class="card">
+        <p>ไฟส่องสว่าง</p>
+        <button onclick="set('light','ON')" class="btn on">เปิด</button>
+        <button onclick="set('light','OFF')" class="btn off">ปิด</button>
+    </div>
+    <div class="card">
+        <p>ปั๊มน้ำ</p>
+        <button onclick="set('pump','ON')" class="btn on">เปิด</button>
+        <button onclick="set('pump','OFF')" class="btn off">ปิด</button>
+    </div>
+
+    <script>
+        // ใส่ Config จาก Firebase Console ของคุณ
+        const firebaseConfig = {
+            databaseURL: "https://your-project.firebaseio.com"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // อ่านค่าความชื้นแบบ Real-time
+        db.ref("status/moisture").on("value", (snapshot) => {
+            document.getElementById("moist").innerText = snapshot.val() + " %";
+        });
+
+        // ฟังก์ชันส่งคำสั่ง
+        function set(target, action) {
+            db.ref("control/" + target).set(action);
+        }
+    </script>
+</body>
+</html>
