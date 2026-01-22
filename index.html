@@ -8,39 +8,37 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 400px; border: 1px solid #334155; }
+        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 380px; border: 1px solid #334155; }
         .percent { font-size: 60px; color: #22c55e; font-weight: bold; }
         .btn { width: 45%; padding: 12px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .on-btn { background: #10b981; } .off-btn { background: #ef4444; }
-        .status-label { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 10px; border: 1px solid; }
-        .st-on { color: #34d399; border-color: #34d399; } .st-off { color: #f87171; border-color: #f87171; }
-        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; font-size: 18px; background: #334155; color: white; border: none; }
+        .on { background: #10b981; } .off { background: #ef4444; }
+        .status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 10px; border: 1px solid; }
+        .s-on { color: #34d399; border-color: #34d399; } .s-off { color: #f87171; border-color: #f87171; }
+        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; font-size: 18px; }
     </style>
 </head>
 <body>
-    <h2>🌱 ระบบปลูกต้นไม้อัจฉริยะ</h2>
-    
+    <h2>🌱 Smart Farm Remote</h2>
     <div class="card">
         <p>💧 ความชื้นในดิน</p>
-        <div id="moist-display" class="percent">0</div>
-        <span>เปอร์เซ็นต์ (%)</span>
+        <div id="moist-pct" class="percent">0</div> %
     </div>
 
     <div class="card">
         <h3>💡 ระบบไฟส่องสว่าง</h3>
-        <div id="light-status" class="status-label">โหลด...</div><br>
-        <button onclick="sendCmd('light','ON')" class="btn on-btn">เปิดไฟ</button>
-        <button onclick="sendCmd('light','OFF')" class="btn off-btn">ปิดไฟ</button>
-        <hr style="border:0.1px solid #334155; margin:15px 0;">
-        เปิด: <input type="time" id="timeOn"> ปิด: <input type="time" id="timeOff">
-        <button onclick="setTimer()" class="btn" style="background:#3b82f6; width:90%; margin-top:10px;">บันทึกเวลา</button>
+        <div id="l-stat" class="status">กำลังโหลด...</div><br>
+        <button onclick="set('light','ON')" class="btn on">เปิดไฟ</button>
+        <button onclick="set('light','OFF')" class="btn off">ปิดไฟ</button>
+        <hr style="border:0.1px solid #334155; margin:15px;">
+        เปิด: <input type="time" id="onT"> ปิด: <input type="time" id="offT">
+        <button onclick="saveT()" class="btn" style="background:#3b82f6; width:90%">บันทึกเวลา</button>
     </div>
 
     <div class="card">
         <h3>💧 ระบบปั๊มน้ำ</h3>
-        <div id="pump-status" class="status-label">โหลด...</div><br>
-        <button onclick="sendCmd('pump','ON')" class="btn on-btn">เปิดปั๊ม</button>
-        <button onclick="sendCmd('pump','OFF')" class="btn off-btn">ปิดปั๊ม</button>
+        <div id="p-stat" class="status">กำลังโหลด...</div><br>
+        <button onclick="set('pump','ON')" class="btn on">เปิดปั๊ม</button>
+        <button onclick="set('pump','OFF')" class="btn off">ปิดปั๊ม</button>
     </div>
 
     <script>
@@ -48,33 +46,27 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // รับค่าความชื้นดิบมาแปลงเป็นเปอร์เซ็นต์ (1023->0, 0->100)
+        // ดึงความชื้นดิบมาแปลงเป็น % (0-1023 -> 100-0%)
         db.ref("status/moisture").on("value", s => {
             let pct = Math.round(((1023 - s.val()) / 1023) * 100);
-            document.getElementById("moist-display").innerText = pct;
+            document.getElementById("moist-pct").innerText = pct;
         });
 
-        // อัปเดตสถานะปั๊มและไฟบนหน้าเว็บ
+        // แสดงสถานะอุปกรณ์
         db.ref("control/light").on("value", s => {
-            let status = s.val();
-            document.getElementById("light-status").innerText = "สถานะ: " + (status == "ON" ? "เปิดใช้งาน" : "ปิดใช้งาน");
-            document.getElementById("light-status").className = "status-label " + (status == "ON" ? "st-on" : "st-off");
+            document.getElementById("l-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
+            document.getElementById("l-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
         });
-
         db.ref("control/pump").on("value", s => {
-            let status = s.val();
-            document.getElementById("pump-status").innerText = "สถานะ: " + (status == "ON" ? "เปิดใช้งาน" : "ปิดใช้งาน");
-            document.getElementById("pump-status").className = "status-label " + (status == "ON" ? "st-on" : "st-off");
+            document.getElementById("p-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
+            document.getElementById("p-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
         });
 
-        function sendCmd(t, a) { db.ref("control/" + t).set(a); }
-        function setTimer() {
-            const on = document.getElementById("timeOn").value;
-            const off = document.getElementById("timeOff").value;
-            if(on && off) {
-                db.ref("timer").set({on, off});
-                alert("ตั้งเวลาสำเร็จ!");
-            }
+        function set(t, a) { db.ref("control/" + t).set(a); }
+        function saveT() {
+            const on = document.getElementById("onT").value;
+            const off = document.getElementById("offT").value;
+            db.ref("timer").set({on, off}); alert("บันทึกเวลาแล้ว");
         }
     </script>
 </body>
