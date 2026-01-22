@@ -7,38 +7,56 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 380px; border: 1px solid #334155; }
-        .percent { font-size: 60px; color: #22c55e; font-weight: bold; }
-        .btn { width: 45%; padding: 12px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .on { background: #10b981; } .off { background: #ef4444; }
-        .status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 10px; border: 1px solid; }
-        .s-on { color: #34d399; border-color: #34d399; } .s-off { color: #f87171; border-color: #f87171; }
-        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; font-size: 18px; }
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 380px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        /* สไตล์ตัวเลขเปอร์เซ็นต์ */
+        #moist-percent { font-size: 60px; color: #22c55e; font-weight: bold; }
+        .unit { font-size: 20px; color: #94a3b8; }
+
+        /* ปุ่มและการควบคุม */
+        .btn { width: 45%; padding: 12px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.3s; }
+        .on-btn { background: #10b981; } .off-btn { background: #ef4444; }
+        .save-btn { background: #3b82f6; width: 90%; margin-top: 10px; }
+        
+        /* ไฟสถานะ (Status Badge) */
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-top: 10px; font-weight: bold; }
+        .status-on { background: #064e3b; color: #34d399; border: 1px solid #34d399; }
+        .status-off { background: #450a0a; color: #f87171; border: 1px solid #f87171; }
+
+        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; border: none; font-size: 18px; background: #334155; color: white; }
+        h3 { margin-bottom: 5px; color: #cbd5e1; }
     </style>
 </head>
 <body>
-    <h2>🌱 Smart Farm Remote</h2>
+    <h2>🌱 ระบบปลูกต้นไม้อัจฉริยะ</h2>
+
     <div class="card">
-        <p>💧 ความแห้งในดิน</p>
-        <div id="moist-pct" class="percent">0</div> %
+        <p>💧 ความชื้นในดิน</p>
+        <div id="moist-percent">0</div>
+        <span class="unit">เปอร์เซ็นต์ (%)</span>
     </div>
 
     <div class="card">
         <h3>💡 ระบบไฟส่องสว่าง</h3>
-        <div id="l-stat" class="status">กำลังโหลด...</div><br>
-        <button onclick="set('light','ON')" class="btn on">เปิดไฟ</button>
-        <button onclick="set('light','OFF')" class="btn off">ปิดไฟ</button>
-        <hr style="border:0.1px solid #334155; margin:15px;">
+        <div id="light-status" class="status-badge">กำลังโหลด...</div>
+        <div style="margin-top: 15px;">
+            <button onclick="set('light','ON')" class="btn on-btn">เปิดไฟ</button>
+            <button onclick="set('light','OFF')" class="btn off-btn">ปิดไฟ</button>
+        </div>
+        <hr style="border: 0.5px solid #334155; margin: 20px 0;">
+        <h3>⏰ ตั้งเวลาเปิด-ปิดอัตโนมัติ</h3>
         เปิด: <input type="time" id="onT"> ปิด: <input type="time" id="offT">
-        <button onclick="saveT()" class="btn" style="background:#3b82f6; width:90%">บันทึกเวลา</button>
+        <button onclick="saveT()" class="btn save-btn">บันทึกเวลา</button>
     </div>
 
     <div class="card">
         <h3>💧 ระบบปั๊มน้ำ</h3>
-        <div id="p-stat" class="status">กำลังโหลด...</div><br>
-        <button onclick="set('pump','ON')" class="btn on">เปิดปั๊ม</button>
-        <button onclick="set('pump','OFF')" class="btn off">ปิดปั๊ม</button>
+        <div id="pump-status" class="status-badge">กำลังโหลด...</div>
+        <div style="margin-top: 15px;">
+            <button onclick="set('pump','ON')" class="btn on-btn">เปิดปั๊ม</button>
+            <button onclick="set('pump','OFF')" class="btn off-btn">ปิดปั๊ม</button>
+        </div>
     </div>
 
     <script>
@@ -46,27 +64,39 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ดึงความชื้นดิบมาแปลงเป็น % (0-1023 -> 100-0%)
-        db.ref("status/moisture").on("value", s => {
-            let pct = Math.round(((1023 - s.val()) / 1023) * 100);
-            document.getElementById("moist-pct").innerText = pct;
+        // 1. ดึงค่าความชื้นและแปลงเป็น %
+        db.ref("status/moisture").on("value", (s) => {
+            let val = s.val();
+            // สูตรคำนวณ: (ค่าที่อ่านได้ / 1024) * 100 
+            // หมายเหตุ: ถ้า Sensor เป็นแบบยิ่งเปียกค่ายิ่งน้อย ให้ใช้: 100 - ((val/1024)*100)
+            let percent = Math.round((val / 1024) * 100); 
+            document.getElementById("moist-percent").innerText = percent;
         });
 
-        // แสดงสถานะอุปกรณ์
-        db.ref("control/light").on("value", s => {
-            document.getElementById("l-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
-            document.getElementById("l-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
+        // 2. ดึงสถานะไฟ (Real-time)
+        db.ref("control/light").on("value", (s) => {
+            const statusStr = s.val();
+            const el = document.getElementById("light-status");
+            el.innerText = "สถานะ: " + (statusStr === "ON" ? "เปิดใช้งาน" : "ปิดใช้งาน");
+            el.className = "status-badge " + (statusStr === "ON" ? "status-on" : "status-off");
         });
-        db.ref("control/pump").on("value", s => {
-            document.getElementById("p-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
-            document.getElementById("p-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
+
+        // 3. ดึงสถานะปั๊ม (Real-time)
+        db.ref("control/pump").on("value", (s) => {
+            const statusStr = s.val();
+            const el = document.getElementById("pump-status");
+            el.innerText = "สถานะ: " + (statusStr === "ON" ? "เปิดใช้งาน" : "ปิดใช้งาน");
+            el.className = "status-badge " + (statusStr === "ON" ? "status-on" : "status-off");
         });
 
         function set(t, a) { db.ref("control/" + t).set(a); }
         function saveT() {
             const on = document.getElementById("onT").value;
             const off = document.getElementById("offT").value;
-            db.ref("timer").set({on, off}); alert("บันทึกเวลาแล้ว");
+            if(on && off) {
+                db.ref("timer").set({on, off});
+                alert("บันทึกเวลาแล้ว!");
+            } else { alert("กรุณาระบุเวลาให้ครบ"); }
         }
     </script>
 </body>
