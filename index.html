@@ -9,34 +9,61 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
-    <div class="max-w-md mx-auto bg-white shadow-xl rounded-2xl p-6">
-        <h1 class="text-2xl font-bold text-center text-green-600 mb-6">🌿 IoT Smart Farm</h1>
+
+    <div class="max-w-md mx-auto bg-white shadow-xl rounded-2xl p-6 mt-10">
+        <h1 class="text-2xl font-bold text-center text-green-600 mb-6">🌿 ระบบรดน้ำ & ไฟอัตโนมัติ</h1>
 
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-blue-400 text-3xl font-bold text-blue-600">
                 <span id="hum-val">0</span>%
             </div>
-            <p class="text-gray-500 mt-2">ความชื้นในดิน</p>
+            <p class="text-gray-500 mt-2 font-medium">ความชื้นในดิน</p>
         </div>
 
-        <div class="bg-green-50 p-4 rounded-xl mb-6 border border-green-100">
-            <h3 class="font-bold text-green-700 mb-2 font-sm">⏰ ตั้งเวลาเปิด-ปิดไฟ</h3>
-            <div class="flex gap-2 items-center">
-                <input type="time" id="t-start" class="border rounded p-1 w-full">
-                <span>-</span>
-                <input type="time" id="t-end" class="border rounded p-1 w-full">
+        <div class="bg-green-50 p-4 rounded-xl mb-6 border border-green-100 shadow-sm">
+            <h3 class="font-bold text-green-700 mb-3 flex items-center">⏰ ตั้งเวลาเปิด-ปิดไฟอัตโนมัติ</h3>
+            <div class="flex gap-2 items-center mb-3">
+                <div class="flex-1">
+                    <label class="text-xs text-gray-500 block">เปิดเวลา</label>
+                    <input type="time" id="t-start" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
+                </div>
+                <span class="mt-4 text-gray-400">-</span>
+                <div class="flex-1">
+                    <label class="text-xs text-gray-500 block">ปิดเวลา</label>
+                    <input type="time" id="t-end" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
+                </div>
             </div>
-            <button onclick="saveTime()" class="w-full mt-3 bg-green-600 text-white py-2 rounded-lg font-bold">บันทึกเวลา</button>
-            <p id="cur-time" class="text-xs text-center mt-2 text-green-800 font-medium"></p>
+            <button onclick="saveTime()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl font-bold transition-colors shadow-md">
+                บันทึกการตั้งค่าเวลา
+            </button>
+            <p id="cur-time" class="text-xs text-center mt-3 text-green-800 font-medium bg-green-100 py-1 rounded-md">
+                ปัจจุบัน: กำลังโหลด...
+            </p>
         </div>
+
+        <hr class="mb-6">
 
         <div class="grid grid-cols-1 gap-4">
-            <button id="btn-pump" onclick="toggle('manual_pump')" class="p-4 rounded-xl bg-gray-200 font-bold transition-all">ปั้มน้ำ: OFF</button>
-            <button id="btn-light" onclick="toggle('manual_light')" class="p-4 rounded-xl bg-gray-200 font-bold transition-all">ไฟ: OFF</button>
+            <div class="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <div>
+                    <p class="font-bold text-blue-800">ปั้มน้ำ</p>
+                    <p id="status-pump" class="text-xs text-blue-600">ปิดอยู่</p>
+                </div>
+                <button id="btn-pump" onclick="toggle('manual_pump')" class="px-6 py-2 rounded-full font-bold bg-gray-300 text-white transition-all">OFF</button>
+            </div>
+
+            <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
+                <div>
+                    <p class="font-bold text-yellow-800">ไฟส่องสว่าง</p>
+                    <p id="status-light" class="text-xs text-yellow-600">ปิดอยู่</p>
+                </div>
+                <button id="btn-light" onclick="toggle('manual_light')" class="px-6 py-2 rounded-full font-bold bg-gray-400 text-white transition-all">OFF</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // --- ใส่ข้อมูล Firebase ของคุณ ---
         const firebaseConfig = {
             apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU",
             authDomain: "fram-1fd7e.firebaseapp.com",
@@ -46,28 +73,44 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Listeners
-        db.ref('iot_system/status/humidity').on('value', s => document.getElementById('hum-val').innerText = s.val());
-        db.ref('iot_system/control/light_schedule').on('value', s => document.getElementById('cur-time').innerText = "ปัจจุบัน: " + (s.val() || "ไม่ได้ตั้ง"));
-        
-        db.ref('iot_system/control/manual_pump').on('value', s => updateBtn('btn-pump', s.val(), 'bg-blue-500', 'ปั้มน้ำ'));
-        db.ref('iot_system/control/manual_light').on('value', s => updateBtn('btn-light', s.val(), 'bg-yellow-500', 'ไฟ'));
+        // ดึงค่าความชื้น
+        db.ref('iot_system/status/humidity').on('value', s => {
+            document.getElementById('hum-val').innerText = s.val() || 0;
+        });
 
+        // ดึงสถานะปัจจุบันของอุปกรณ์
+        db.ref('iot_system/control/manual_pump').on('value', s => updateUI('btn-pump', 'status-pump', s.val(), 'bg-blue-500', 'ปั้มทำงาน'));
+        db.ref('iot_system/control/manual_light').on('value', s => updateUI('btn-light', 'status-light', s.val(), 'bg-yellow-500', 'ไฟเปิดอยู่'));
+
+        // ดึงค่าเวลาที่ตั้งไว้
+        db.ref('iot_system/control/light_schedule').on('value', s => {
+            document.getElementById('cur-time').innerText = "ช่วงเวลาที่ตั้งไว้: " + (s.val() || "ยังไม่ได้ตั้ง");
+        });
+
+        // ฟังก์ชันสลับสถานะ ON/OFF
         function toggle(path) {
             const ref = db.ref('iot_system/control/' + path);
             ref.once('value').then(s => ref.set(!s.val()));
         }
 
+        // ฟังก์ชันบันทึกเวลาไป Firebase
         function saveTime() {
-            const s = document.getElementById('t-start').value;
-            const e = document.getElementById('t-end').value;
-            if(s && e) db.ref('iot_system/control/light_schedule').set(s + "-" + e);
+            const start = document.getElementById('t-start').value;
+            const end = document.getElementById('t-end').value;
+            if(start && end) {
+                db.ref('iot_system/control/light_schedule').set(start + "-" + end);
+                alert("บันทึกเวลาสำเร็จ!");
+            } else {
+                alert("กรุณาเลือกเวลาให้ครบทั้งสองช่องครับ");
+            }
         }
 
-        function updateBtn(id, active, color, text) {
-            const el = document.getElementById(id);
-            el.innerText = text + (active ? ": ON" : ": OFF");
-            el.className = `p-4 rounded-xl font-bold transition-all ${active ? color + ' text-white' : 'bg-gray-200'}`;
+        function updateUI(btnId, textId, active, color, text) {
+            const btn = document.getElementById(btnId);
+            const statusText = document.getElementById(textId);
+            btn.innerText = active ? "ON" : "OFF";
+            btn.className = `px-6 py-2 rounded-full font-bold transition-all ${active ? color + ' shadow-lg text-white' : 'bg-gray-400 text-white'}`;
+            statusText.innerText = active ? text : "ปิดอยู่";
         }
     </script>
 </body>
