@@ -9,8 +9,14 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .bg-active { background-color: #10B981; box-shadow: 0 0 8px #10B981; } /* สีเขียวสว่างเมื่อทำงาน */
-        .bg-inactive { background-color: #EF4444; } /* สีแดงเมื่อหยุดทำงาน */
+        .bg-active { background-color: #10B981; box-shadow: 0 0 8px #10B981; animation: pulse 2s infinite; }
+        .bg-inactive { background-color: #EF4444; }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4">
@@ -35,8 +41,8 @@
                         <span id="txt-pump" class="text-sm font-medium text-gray-500">ปิดอยู่</span>
                     </div>
                 </div>
-                <button id="btn-pump" onclick="toggle('manual_pump')" class="w-full py-2 rounded-lg font-bold bg-gray-200 text-gray-700 transition-all">
-                    สั่งเปิด/ปิด Manual
+                <button id="btn-pump" onclick="toggle('manual_pump')" class="w-full py-3 rounded-xl font-bold text-white transition-all shadow-md bg-red-500 hover:opacity-90 active:scale-95">
+                    ปิดใช้งาน (OFF)
                 </button>
             </div>
 
@@ -48,8 +54,8 @@
                         <span id="txt-light" class="text-sm font-medium text-gray-500">ปิดอยู่</span>
                     </div>
                 </div>
-                <button id="btn-light" onclick="toggle('manual_light')" class="w-full py-2 rounded-lg font-bold bg-gray-200 text-gray-700 transition-all">
-                    สั่งเปิด/ปิด Manual
+                <button id="btn-light" onclick="toggle('manual_light')" class="w-full py-3 rounded-xl font-bold text-white transition-all shadow-md bg-red-500 hover:opacity-90 active:scale-95">
+                    ปิดใช้งาน (OFF)
                 </button>
             </div>
 
@@ -58,11 +64,11 @@
         <div class="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
             <h3 class="font-bold text-green-700 mb-2">⏰ ตั้งเวลาไฟอัตโนมัติ</h3>
             <div class="flex gap-2 items-center mb-2">
-                <input type="time" id="t-start" class="border rounded p-1 w-full text-sm">
+                <input type="time" id="t-start" class="border rounded p-2 w-full text-sm outline-none focus:ring-2 focus:ring-green-400">
                 <span class="text-gray-400">-</span>
-                <input type="time" id="t-end" class="border rounded p-1 w-full text-sm">
+                <input type="time" id="t-end" class="border rounded p-2 w-full text-sm outline-none focus:ring-2 focus:ring-green-400">
             </div>
-            <button onclick="saveTime()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold">บันทึกเวลา</button>
+            <button onclick="saveTime()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition-colors">บันทึกเวลา</button>
             <p id="cur-time" class="text-center text-xs text-green-600 mt-2 font-medium"></p>
         </div>
 
@@ -78,28 +84,40 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- 1. ฟังสถานะจากบอร์ด (Real-time Status) ---
-        
-        // ความชื้น
+        // ฟังค่าความชื้น
         db.ref('iot_system/status/humidity').on('value', s => document.getElementById('hum-val').innerText = s.val() || 0);
 
-        // สถานะปั้ม
+        // ฟังสถานะปั้ม (Real-time)
         db.ref('iot_system/status/pump_active').on('value', s => {
             const active = s.val();
-            document.getElementById('dot-pump').className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
-            document.getElementById('txt-pump').innerText = active ? 'กำลังทำงาน' : 'ปิดอยู่';
-            document.getElementById('txt-pump').className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
+            const btn = document.getElementById('btn-pump');
+            const dot = document.getElementById('dot-pump');
+            const txt = document.getElementById('txt-pump');
+
+            dot.className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
+            txt.innerText = active ? 'กำลังทำงาน' : 'ปิดอยู่';
+            txt.className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
+            
+            // เปลี่ยนสีปุ่ม: เขียวเมื่อ ON, แดงเมื่อ OFF
+            btn.innerText = active ? "เปิดใช้งาน (ON)" : "ปิดใช้งาน (OFF)";
+            btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
         });
 
-        // สถานะไฟ
+        // ฟังสถานะไฟ (Real-time)
         db.ref('iot_system/status/light_active').on('value', s => {
             const active = s.val();
-            document.getElementById('dot-light').className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
-            document.getElementById('txt-light').innerText = active ? 'เปิดไฟอยู่' : 'ปิดอยู่';
-            document.getElementById('txt-light').className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
-        });
+            const btn = document.getElementById('btn-light');
+            const dot = document.getElementById('dot-light');
+            const txt = document.getElementById('txt-light');
 
-        // --- 2. ฟังก์ชันควบคุม ---
+            dot.className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
+            txt.innerText = active ? 'เปิดไฟอยู่' : 'ปิดอยู่';
+            txt.className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
+            
+            // เปลี่ยนสีปุ่ม: เขียวเมื่อ ON, แดงเมื่อ OFF
+            btn.innerText = active ? "เปิดใช้งาน (ON)" : "ปิดใช้งาน (OFF)";
+            btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
+        });
 
         function toggle(path) {
             const ref = db.ref('iot_system/control/' + path);
@@ -109,7 +127,10 @@
         function saveTime() {
             const start = document.getElementById('t-start').value;
             const end = document.getElementById('t-end').value;
-            if(start && end) db.ref('iot_system/control/light_schedule').set(start + "-" + end);
+            if(start && end) {
+                db.ref('iot_system/control/light_schedule').set(start + "-" + end);
+                alert("บันทึกเวลาสำเร็จ!");
+            }
         }
 
         db.ref('iot_system/control/light_schedule').on('value', s => {
