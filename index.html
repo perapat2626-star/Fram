@@ -25,18 +25,18 @@
             <div class="flex gap-2 items-center mb-3">
                 <div class="flex-1">
                     <label class="text-xs text-gray-500 block">เปิดเวลา</label>
-                    <input type="time" id="t-start" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
+                    <input type="time" id="t-start" class="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-400">
                 </div>
                 <span class="mt-4 text-gray-400">-</span>
                 <div class="flex-1">
                     <label class="text-xs text-gray-500 block">ปิดเวลา</label>
-                    <input type="time" id="t-end" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
+                    <input type="time" id="t-end" class="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-400">
                 </div>
             </div>
             <button onclick="saveTime()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl font-bold transition-colors shadow-md">
                 บันทึกการตั้งค่าเวลา
             </button>
-            <p id="cur-time" class="text-xs text-center mt-3 text-green-800 font-medium bg-green-100 py-1 rounded-md">
+            <p id="cur-time" class="text-xs text-center mt-3 text-green-800 font-medium bg-green-100 py-1 rounded-md italic">
                 ปัจจุบัน: กำลังโหลด...
             </p>
         </div>
@@ -47,15 +47,15 @@
             <div class="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
                 <div>
                     <p class="font-bold text-blue-800">ปั้มน้ำ</p>
-                    <p id="status-pump" class="text-xs text-blue-600">ปิดอยู่</p>
+                    <p id="status-pump" class="text-xs text-blue-600 italic">ปิดอยู่</p>
                 </div>
-                <button id="btn-pump" onclick="toggle('manual_pump')" class="px-6 py-2 rounded-full font-bold bg-gray-300 text-white transition-all">OFF</button>
+                <button id="btn-pump" onclick="toggle('manual_pump')" class="px-6 py-2 rounded-full font-bold bg-gray-400 text-white transition-all">OFF</button>
             </div>
 
             <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
                 <div>
                     <p class="font-bold text-yellow-800">ไฟส่องสว่าง</p>
-                    <p id="status-light" class="text-xs text-yellow-600">ปิดอยู่</p>
+                    <p id="status-light" class="text-xs text-yellow-600 italic">ปิดอยู่</p>
                 </div>
                 <button id="btn-light" onclick="toggle('manual_light')" class="px-6 py-2 rounded-full font-bold bg-gray-400 text-white transition-all">OFF</button>
             </div>
@@ -63,7 +63,6 @@
     </div>
 
     <script>
-        // --- ใส่ข้อมูล Firebase ของคุณ ---
         const firebaseConfig = {
             apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU",
             authDomain: "fram-1fd7e.firebaseapp.com",
@@ -73,27 +72,32 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ดึงค่าความชื้น
+        // 1. ติดตามค่าความชื้น
         db.ref('iot_system/status/humidity').on('value', s => {
             document.getElementById('hum-val').innerText = s.val() || 0;
         });
 
-        // ดึงสถานะปัจจุบันของอุปกรณ์
-        db.ref('iot_system/control/manual_pump').on('value', s => updateUI('btn-pump', 'status-pump', s.val(), 'bg-blue-500', 'ปั้มทำงาน'));
-        db.ref('iot_system/control/manual_light').on('value', s => updateUI('btn-light', 'status-light', s.val(), 'bg-yellow-500', 'ไฟเปิดอยู่'));
+        // 2. แสดงสถานะการทำงานจริงจากบอร์ด (Real-time Status)
+        db.ref('iot_system/status/pump_active').on('value', s => {
+            updateUI('btn-pump', 'status-pump', s.val(), 'bg-blue-600', 'กำลังรดน้ำ...');
+        });
 
-        // ดึงค่าเวลาที่ตั้งไว้
+        db.ref('iot_system/status/light_active').on('value', s => {
+            updateUI('btn-light', 'status-light', s.val(), 'bg-yellow-500', 'ไฟเปิดอยู่');
+        });
+
+        // 3. แสดงช่วงเวลาที่ตั้งไว้
         db.ref('iot_system/control/light_schedule').on('value', s => {
             document.getElementById('cur-time').innerText = "ช่วงเวลาที่ตั้งไว้: " + (s.val() || "ยังไม่ได้ตั้ง");
         });
 
-        // ฟังก์ชันสลับสถานะ ON/OFF
+        // ฟังก์ชันสั่งงาน (Control)
         function toggle(path) {
             const ref = db.ref('iot_system/control/' + path);
             ref.once('value').then(s => ref.set(!s.val()));
         }
 
-        // ฟังก์ชันบันทึกเวลาไป Firebase
+        // ฟังก์ชันบันทึกเวลา
         function saveTime() {
             const start = document.getElementById('t-start').value;
             const end = document.getElementById('t-end').value;
@@ -101,16 +105,17 @@
                 db.ref('iot_system/control/light_schedule').set(start + "-" + end);
                 alert("บันทึกเวลาสำเร็จ!");
             } else {
-                alert("กรุณาเลือกเวลาให้ครบทั้งสองช่องครับ");
+                alert("กรุณาเลือกเวลาให้ครบครับ");
             }
         }
 
-        function updateUI(btnId, textId, active, color, text) {
+        // ฟังก์ชันอัปเดต UI ตามสถานะที่ได้รับจากบอร์ด
+        function updateUI(btnId, textId, active, color, activeText) {
             const btn = document.getElementById(btnId);
             const statusText = document.getElementById(textId);
             btn.innerText = active ? "ON" : "OFF";
             btn.className = `px-6 py-2 rounded-full font-bold transition-all ${active ? color + ' shadow-lg text-white' : 'bg-gray-400 text-white'}`;
-            statusText.innerText = active ? text : "ปิดอยู่";
+            statusText.innerText = active ? activeText : "ปิดอยู่";
         }
     </script>
 </body>
