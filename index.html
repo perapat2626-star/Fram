@@ -1,73 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Farm Dashboard</title>
+    <title>Smart Garden</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin: 10px auto; max-width: 380px; border: 1px solid #334155; }
-        .percent { font-size: 60px; color: #22c55e; font-weight: bold; }
-        .btn { width: 45%; padding: 12px; margin: 5px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .on { background: #10b981; } .off { background: #ef4444; }
-        .status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; margin-bottom: 10px; border: 1px solid; }
-        .s-on { color: #34d399; border-color: #34d399; } .s-off { color: #f87171; border-color: #f87171; }
-        input[type='time'] { width: 80%; padding: 10px; margin: 5px; border-radius: 8px; font-size: 18px; }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .moisture-circle { width: 150px; height: 150px; border-radius: 50%; border: 8px solid #4caf50; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: #2e7d32; }
+        .btn { border: none; padding: 15px; border-radius: 10px; cursor: pointer; width: 45%; font-weight: bold; color: white; margin: 5px; }
+        .on { background: #4caf50; } .off { background: #f44336; }
+        .timer-box { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        input[type="time"] { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; }
     </style>
 </head>
 <body>
-    <h2>🌱 Smart Farm Remote</h2>
-    <div class="card">
-        <p>💧 ความชื้นในดิน</p>
-        <div id="moist-pct" class="percent">0</div> %
+
+<div class="card">
+    <h2>🍀 Smart Garden</h2>
+    <div class="moisture-circle"><span id="moisture">0</span>%</div>
+    <p>ความชื้นในดิน</p>
+
+    <div style="display: flex; justify-content: space-between;">
+        <button id="pumpBtn" class="btn off" onclick="toggle('pump')">ปั้มน้ำ: ปิด</button>
+        <button id="lightBtn" class="btn off" onclick="toggle('light')">ไฟ: ปิด</button>
     </div>
 
-    <div class="card">
-        <h3>💡 ระบบไฟส่องสว่าง</h3>
-        <div id="l-stat" class="status">กำลังโหลด...</div><br>
-        <button onclick="set('light','ON')" class="btn on">เปิดไฟ</button>
-        <button onclick="set('light','OFF')" class="btn off">ปิดไฟ</button>
-        <hr style="border:0.1px solid #334155; margin:15px;">
-        เปิด: <input type="time" id="onT"> ปิด: <input type="time" id="offT">
-        <button onclick="saveT()" class="btn" style="background:#3b82f6; width:90%">บันทึกเวลา</button>
+    <div class="timer-box">
+        <strong>⏰ ตั้งเวลาเปิด-ปิดไฟ</strong>
+        <input type="time" id="onTime" onchange="setTimer('on', this.value)">
+        <input type="time" id="offTime" onchange="setTimer('off', this.value)">
     </div>
+</div>
 
-    <div class="card">
-        <h3>💧 ระบบปั๊มน้ำ</h3>
-        <div id="p-stat" class="status">กำลังโหลด...</div><br>
-        <button onclick="set('pump','ON')" class="btn on">เปิดปั๊ม</button>
-        <button onclick="set('pump','OFF')" class="btn off">ปิดปั๊ม</button>
-    </div>
+<script>
+    // --- ใส่แค่ 2 ค่านี้จาก Firebase ---
+    const config = {
+        apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU",
+        databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com"
+    };
 
-    <script>
-        const firebaseConfig = { databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    firebase.initializeApp(config);
+    const db = firebase.database();
 
-        // ดึงความชื้นดิบมาแปลงเป็น % (0-1023 -> 100-0%)
-        db.ref("status/moisture").on("value", s => {
-            let pct = Math.round(((1023 - s.val()) / 1023) * 100);
-            document.getElementById("moist-pct").innerText = pct;
-        });
+    // ดึงค่ามาแสดงผล (Realtime)
+    db.ref().on('value', (snap) => {
+        const data = snap.val() || {};
+        
+        // แสดงความชื้น
+        document.getElementById('moisture').innerText = data.status?.moisture || 0;
+        
+        // อัปเดตสถานะปุ่ม
+        updateBtn('pumpBtn', 'ปั้มน้ำ', data.control?.pump);
+        updateBtn('lightBtn', 'ไฟ', data.control?.light);
+        
+        // อัปเดตเวลาที่ตั้งไว้
+        if(data.settings?.onTime) document.getElementById('onTime').value = data.settings.onTime;
+        if(data.settings?.offTime) document.getElementById('offTime').value = data.settings.offTime;
+    });
 
-        // แสดงสถานะอุปกรณ์
-        db.ref("control/light").on("value", s => {
-            document.getElementById("l-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
-            document.getElementById("l-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
-        });
-        db.ref("control/pump").on("value", s => {
-            document.getElementById("p-stat").innerText = s.val() == "ON" ? "สถานะ: เปิด" : "สถานะ: ปิด";
-            document.getElementById("p-stat").className = "status " + (s.val() == "ON" ? "s-on" : "s-off");
-        });
+    function updateBtn(id, label, isOn) {
+        const el = document.getElementById(id);
+        el.innerText = `${label}: ${isOn ? 'เปิด' : 'ปิด'}`;
+        el.className = `btn ${isOn ? 'on' : 'off'}`;
+    }
 
-        function set(t, a) { db.ref("control/" + t).set(a); }
-        function saveT() {
-            const on = document.getElementById("onT").value;
-            const off = document.getElementById("offT").value;
-            db.ref("timer").set({on, off}); alert("บันทึกเวลาแล้ว");
-        }
-    </script>
+    function toggle(path) {
+        const ref = db.ref('control/' + path);
+        ref.once('value').then(s => ref.set(!s.val()));
+    }
+
+    function setTimer(type, val) {
+        db.ref('settings/' + type + 'Time').set(val);
+    }
+</script>
+
 </body>
 </html>
