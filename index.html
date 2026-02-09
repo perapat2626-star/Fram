@@ -3,107 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Farm IoT</title>
+    <title>Smart Farm IoT - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body class="bg-[#0f172a] text-slate-200 min-h-screen font-sans">
 
-    <div class="max-w-4xl mx-auto p-6">
+    <div class="max-w-5xl mx-auto p-6">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
-                🌿 Smart Garden IoT
+                🌿 Smart Garden Dashboard
             </h1>
-            <p class="text-slate-400 mt-2">ระบบควบคุมสวนอัตโนมัติผ่าน Cloud</p>
+            <p class="text-slate-400 mt-2">ระบบติดตามอุณหภูมิและความชื้นแบบ Real-time</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-center">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center">
             <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
                 <span class="text-sm uppercase tracking-widest text-slate-400">ความชื้นในดิน</span>
-                <div class="text-6xl font-black text-blue-400 mt-2" id="moisture">--%</div>
+                <div class="text-5xl font-black text-blue-400 mt-2" id="moisture">--%</div>
+            </div>
+            <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl border-t-orange-500/50">
+                <span class="text-sm uppercase tracking-widest text-slate-400">อุณหภูมิอากาศ</span>
+                <div class="text-5xl font-black text-orange-400 mt-2" id="temp">--°C</div>
             </div>
             <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl">
-                <span class="text-sm uppercase tracking-widest text-slate-400">ระดับน้ำ/ระยะห่าง</span>
-                <div class="text-6xl font-black text-indigo-400 mt-2" id="distance">-- cm</div>
+                <span class="text-sm uppercase tracking-widest text-slate-400">ระดับน้ำในถัง</span>
+                <div class="text-5xl font-black text-indigo-400 mt-2" id="distance">-- cm</div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
-                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">💧 สถานะปั๊มน้ำ</h3>
-                <div id="pump-indicator" class="w-full py-6 rounded-2xl text-center text-2xl font-bold bg-slate-700 transition-all duration-500">
-                    --
+            <div class="space-y-6">
+                <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">💧 สถานะปั๊มน้ำ</h3>
+                    <div id="pump-indicator" class="w-full py-6 rounded-2xl text-center text-2xl font-bold bg-slate-700 transition-all">--</div>
+                </div>
+                <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">💡 สถานะระบบไฟ</h3>
+                    <div id="light-indicator" class="w-full py-6 rounded-2xl text-center text-2xl font-bold bg-slate-700 transition-all">--</div>
                 </div>
             </div>
 
             <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
-                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">💡 ตั้งเวลาเปิด-ปิดไฟ</h3>
+                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">⏰ ตั้งเวลาเปิด-ปิดไฟ</h3>
                 <div class="space-y-4">
                     <div class="flex gap-4">
                         <div class="flex-1">
-                            <label class="text-xs text-slate-400">เวลาเปิด (ON)</label>
-                            <input type="time" id="time-on" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 focus:outline-none focus:border-green-500">
+                            <label class="text-xs text-slate-400 uppercase">เวลาเปิด (ON)</label>
+                            <input type="time" id="time-on" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-green-500 outline-none">
                         </div>
                         <div class="flex-1">
-                            <label class="text-xs text-slate-400">เวลาปิด (OFF)</label>
-                            <input type="time" id="time-off" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 focus:outline-none focus:border-green-500">
+                            <label class="text-xs text-slate-400 uppercase">เวลาปิด (OFF)</label>
+                            <input type="time" id="time-off" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-green-500 outline-none">
                         </div>
                     </div>
-                    <button onclick="saveTimer()" class="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20">
-                        บันทึกการตั้งเวลา
-                    </div>
+                    <button onclick="saveTimer()" class="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:scale-[1.02] active:scale-95 py-4 rounded-xl font-bold transition-all shadow-lg">
+                        บันทึกการตั้งเวลาใหม่
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 3. ตั้งค่า Firebase (Copy จาก Firebase Console ของคุณ) ---
         const firebaseConfig = {
             apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU",
-            authDomain: "your-project.firebaseapp.com",
             databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com",
             projectId: "fram-1fd7e",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ดึงข้อมูล Realtime
         db.ref('system').on('value', (snapshot) => {
             const data = snapshot.val();
-            document.getElementById('moisture').innerText = data.moisture + "%";
-            document.getElementById('distance').innerText = data.distance + " cm";
-            
-            // แสดงสถานะปั๊ม
-            const pumpInd = document.getElementById('pump-indicator');
-            if(data.pump_status === "ON") {
-                pumpInd.innerText = "กำลังทำงาน";
-                pumpInd.classList.add('bg-green-500/20', 'text-green-400');
-                pumpInd.classList.remove('bg-slate-700', 'text-slate-400');
-            } else {
-                pumpInd.innerText = "ปิดการทำงาน";
-                pumpInd.classList.remove('bg-green-500/20', 'text-green-400');
-                pumpInd.classList.add('bg-slate-700', 'text-slate-400');
-            }
+            if(!data) return;
 
-            // แสดงเวลาที่ตั้งไว้ในช่อง Input (ถ้ายังไม่มีการเปลี่ยน)
-            if(!document.getElementById('time-on').value) {
+            // อัปเดตตัวเลข
+            document.getElementById('moisture').innerText = (data.moisture || 0) + "%";
+            document.getElementById('temp').innerText = (data.temp ? data.temp.toFixed(1) : "--") + "°C";
+            document.getElementById('distance').innerText = (data.distance || 0) + " cm";
+
+            // อัปเดตสถานะปั๊ม
+            updateStatus('pump-indicator', data.pump_status, "กำลังรดน้ำ", "ปิดการทำงาน", "bg-green-500/20", "text-green-400");
+            
+            // อัปเดตสถานะไฟ
+            updateStatus('light-indicator', data.light_status, "เปิดไฟส่องสว่าง", "ปิดไฟแล้ว", "bg-yellow-500/20", "text-yellow-400");
+
+            if(!document.getElementById('time-on').value && data.timer_on) {
                 document.getElementById('time-on').value = data.timer_on;
                 document.getElementById('time-off').value = data.timer_off;
             }
         });
 
+        function updateStatus(id, status, textOn, textOff, bgClass, textClass) {
+            const el = document.getElementById(id);
+            if(status === "ON") {
+                el.innerText = textOn;
+                el.className = `w-full py-6 rounded-2xl text-center text-2xl font-bold transition-all ${bgClass} ${textClass} border border-current/30`;
+            } else {
+                el.innerText = textOff;
+                el.className = "w-full py-6 rounded-2xl text-center text-2xl font-bold bg-slate-700 text-slate-400 transition-all";
+            }
+        }
+
         function saveTimer() {
             const tOn = document.getElementById('time-on').value;
             const tOff = document.getElementById('time-off').value;
-            db.ref('system').update({
-                timer_on: tOn,
-                timer_off: tOff
-            }).then(() => alert("ตั้งเวลาสำเร็จ!"));
+            if(!tOn || !tOff) return alert("กรุณาระบุเวลาให้ครบ");
+            db.ref('system').update({ timer_on: tOn, timer_off: tOff })
+              .then(() => alert("บันทึกการตั้งเวลาสำเร็จ!"));
         }
     </script>
 </body>
