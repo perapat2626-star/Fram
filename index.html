@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Farm Control</title>
+    <title>Smart Farm Control & Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -11,7 +11,6 @@
         .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .bg-active { background-color: #10B981; box-shadow: 0 0 8px #10B981; animation: pulse 2s infinite; }
         .bg-inactive { background-color: #EF4444; }
-        
         @keyframes pulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
@@ -24,15 +23,25 @@
     <div class="max-w-md mx-auto bg-white shadow-xl rounded-2xl p-6 mt-10">
         <h1 class="text-2xl font-bold text-center text-green-600 mb-6">🌿 Dashboard สถานะฟาร์ม</h1>
 
-        <div class="text-center mb-8">
+        <div class="text-center mb-6">
             <div class="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-blue-400 text-3xl font-bold text-blue-600">
                 <span id="hum-val">0</span>%
             </div>
             <p class="text-gray-500 mt-2 font-medium">ความชื้นในดิน</p>
         </div>
 
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                <p class="text-xs text-blue-500 font-bold uppercase">ความชื้นอากาศ</p>
+                <p class="text-xl font-bold text-blue-700"><span id="air-hum-val">--</span> <small class="text-xs">%</small></p>
+            </div>
+            <div class="p-3 bg-purple-50 rounded-xl border border-purple-100 text-center">
+                <p class="text-xs text-purple-500 font-bold uppercase">ระยะทาง/ระดับ</p>
+                <p class="text-xl font-bold text-purple-700"><span id="dist-val">--</span> <small class="text-xs">cm</small></p>
+            </div>
+        </div>
+
         <div class="space-y-4">
-            
             <div class="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <span class="font-bold text-lg text-gray-700">ปั้มน้ำ (Auto < 50%)</span>
@@ -58,7 +67,6 @@
                     ปิดใช้งาน (OFF)
                 </button>
             </div>
-
         </div>
 
         <div class="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
@@ -71,7 +79,6 @@
             <button onclick="saveTime()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition-colors">บันทึกเวลา</button>
             <p id="cur-time" class="text-center text-xs text-green-600 mt-2 font-medium"></p>
         </div>
-
     </div>
 
     <script>
@@ -84,37 +91,35 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ฟังค่าความชื้น
+        // --- ส่วนการดึงค่า Sensor (Status) ---
         db.ref('iot_system/status/humidity').on('value', s => document.getElementById('hum-val').innerText = s.val() || 0);
+        db.ref('iot_system/status/air_humidity').on('value', s => {
+            let val = s.val();
+            document.getElementById('air-hum-val').innerText = val ? parseFloat(val).toFixed(1) : "--";
+        });
+        db.ref('iot_system/status/distance').on('value', s => document.getElementById('dist-val').innerText = s.val() || 0);
 
-        // ฟังสถานะปั้ม (Real-time)
+        // --- ส่วนการควบคุม (Control) ---
         db.ref('iot_system/status/pump_active').on('value', s => {
             const active = s.val();
             const btn = document.getElementById('btn-pump');
             const dot = document.getElementById('dot-pump');
             const txt = document.getElementById('txt-pump');
-
             dot.className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
             txt.innerText = active ? 'กำลังทำงาน' : 'ปิดอยู่';
             txt.className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
-            
-            // เปลี่ยนสีปุ่ม: เขียวเมื่อ ON, แดงเมื่อ OFF
             btn.innerText = active ? "เปิดใช้งาน (ON)" : "ปิดใช้งาน (OFF)";
             btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
         });
 
-        // ฟังสถานะไฟ (Real-time)
         db.ref('iot_system/status/light_active').on('value', s => {
             const active = s.val();
             const btn = document.getElementById('btn-light');
             const dot = document.getElementById('dot-light');
             const txt = document.getElementById('txt-light');
-
             dot.className = `status-dot ${active ? 'bg-active' : 'bg-inactive'}`;
             txt.innerText = active ? 'เปิดไฟอยู่' : 'ปิดอยู่';
             txt.className = `text-sm font-bold ${active ? 'text-green-600' : 'text-red-500'}`;
-            
-            // เปลี่ยนสีปุ่ม: เขียวเมื่อ ON, แดงเมื่อ OFF
             btn.innerText = active ? "เปิดใช้งาน (ON)" : "ปิดใช้งาน (OFF)";
             btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
         });
@@ -124,18 +129,4 @@
             ref.once('value').then(s => ref.set(!s.val()));
         }
 
-        function saveTime() {
-            const start = document.getElementById('t-start').value;
-            const end = document.getElementById('t-end').value;
-            if(start && end) {
-                db.ref('iot_system/control/light_schedule').set(start + "-" + end);
-                alert("บันทึกเวลาสำเร็จ!");
-            }
-        }
-
-        db.ref('iot_system/control/light_schedule').on('value', s => {
-            document.getElementById('cur-time').innerText = "ช่วงเวลาปัจจุบัน: " + (s.val() || "ยังไม่ได้ตั้ง");
-        });
-    </script>
-</body>
-</html>
+        function save
