@@ -51,7 +51,7 @@
                     </div>
                 </div>
                 <button id="btn-pump" onclick="toggle('manual_pump')" class="w-full py-3 rounded-xl font-bold text-white transition-all shadow-md bg-red-500 hover:opacity-90 active:scale-95">
-                    โหลดสถานะ...
+                    ปิดใช้งาน (OFF)
                 </button>
             </div>
 
@@ -64,7 +64,7 @@
                     </div>
                 </div>
                 <button id="btn-light" onclick="toggle('manual_light')" class="w-full py-3 rounded-xl font-bold text-white transition-all shadow-md bg-red-500 hover:opacity-90 active:scale-95">
-                    โหลดสถานะ...
+                    ปิดใช้งาน (OFF)
                 </button>
             </div>
         </div>
@@ -77,14 +77,13 @@
                 <input type="time" id="t-end" class="border rounded p-2 w-full text-sm outline-none focus:ring-2 focus:ring-green-400">
             </div>
             <button onclick="saveTime()" class="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition-colors">บันทึกเวลา</button>
-            <p id="cur-time" class="text-center text-xs text-green-600 mt-2 font-medium">ช่วงเวลาปัจจุบัน: --</p>
+            <p id="cur-time" class="text-center text-xs text-green-600 mt-2 font-medium"></p>
         </div>
     </div>
 
     <script>
-        // --- 1. การตั้งค่า Firebase ---
         const firebaseConfig = {
-            apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU", 
+            apiKey: "tY8jvGbcyjTYe0Vb5zsGwuaBFYPeccmqck91gYnU",
             authDomain: "fram-1fd7e-default-rtdb.firebaseio.com",
             databaseURL: "https://fram-1fd7e-default-rtdb.firebaseio.com",
             projectId: "fram-1fd7e"
@@ -92,27 +91,15 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- 2. การดึงค่า Sensor (Status) แบบ Real-time ---
-        
-        // ความชื้นในดิน
-        db.ref('iot_system/status/humidity').on('value', s => {
-            document.getElementById('hum-val').innerText = s.val() !== null ? s.val() : 0;
-        });
-
-        // ความชื้นอากาศ (DHT22) - แสดงผลอย่างเดียว
+        // --- ส่วนการดึงค่า Sensor (Status) ---
+        db.ref('iot_system/status/humidity').on('value', s => document.getElementById('hum-val').innerText = s.val() || 0);
         db.ref('iot_system/status/air_humidity').on('value', s => {
             let val = s.val();
-            document.getElementById('air-hum-val').innerText = val !== null ? parseFloat(val).toFixed(1) : "--";
+            document.getElementById('air-hum-val').innerText = val ? parseFloat(val).toFixed(1) : "--";
         });
+        db.ref('iot_system/status/distance').on('value', s => document.getElementById('dist-val').innerText = s.val() || 0);
 
-        // ระยะทาง (Sonar) - แสดงผลอย่างเดียว
-        db.ref('iot_system/status/distance').on('value', s => {
-            document.getElementById('dist-val').innerText = s.val() !== null ? s.val() : "--";
-        });
-
-        // --- 3. การแสดงสถานะปุ่มและการควบคุม (Control) ---
-        
-        // ปั้มน้ำ
+        // --- ส่วนการควบคุม (Control) ---
         db.ref('iot_system/status/pump_active').on('value', s => {
             const active = s.val();
             const btn = document.getElementById('btn-pump');
@@ -125,7 +112,6 @@
             btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
         });
 
-        // ไฟส่องสว่าง
         db.ref('iot_system/status/light_active').on('value', s => {
             const active = s.val();
             const btn = document.getElementById('btn-light');
@@ -138,8 +124,6 @@
             btn.className = `w-full py-3 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 ${active ? 'bg-green-500' : 'bg-red-500'}`;
         });
 
-        // --- 4. ฟังก์ชันการทำงาน (Actions) ---
-
         function toggle(path) {
             const ref = db.ref('iot_system/control/' + path);
             ref.once('value').then(s => ref.set(!s.val()));
@@ -148,12 +132,9 @@
         function saveTime() {
             const start = document.getElementById('t-start').value;
             const end = document.getElementById('t-end').value;
-            if (start && end) {
-                db.ref('iot_system/control/light_schedule').set(start + "-" + end)
-                  .then(() => alert("บันทึกช่วงเวลาสำเร็จ!"))
-                  .catch(err => alert("ผิดพลาด: " + err.message));
-            } else {
-                alert("กรุณาเลือกเวลาให้ครบ!");
+            if(start && end) {
+                db.ref('iot_system/control/light_schedule').set(start + "-" + end);
+                alert("บันทึกเวลาสำเร็จ!");
             }
         }
 
